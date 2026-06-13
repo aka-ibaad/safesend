@@ -1,0 +1,17 @@
+{
+  "cli": {
+    "appVersionSource": "remote",
+    "version": ">= 3.0.0"
+  },
+  "build": {
+    "production": {
+      "env": {
+        "EAS_BUILD_NO_EXPO_GO_WARNING": "true"
+      },
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
+      }
+    }
+  }
+}

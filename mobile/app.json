@@ -1,5 +1,18 @@
 {
-  "expo": {
+  "runtimeVersion": { "policy": "appVersion" },
+    "android": {
+      "package": "com.example.myapp",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
     "name": "mobile",
     "slug": "mobile",
     "version": "1.0.0",
@@ -14,20 +27,22 @@
     "ios": {
       "supportsTablet": true
     },
-    "android": {
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
-    },
+
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "scheme": "mobile",
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "ded3990c-18d7-4c2e-95dd-7d9783c72908"
+      }
+    },
+    "owner": "aka_ibaad"
   }
 }
