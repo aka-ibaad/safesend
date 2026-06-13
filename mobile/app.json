@@ -1,18 +1,5 @@
 {
-  "runtimeVersion": { "policy": "appVersion" },
-    "android": {
-      "package": "com.example.myapp",
-      "versionCode": 1,
-      "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
-      }
-    },
-    "updates": {
-      "fallbackToCacheTimeout": 0
-    },
+  "expo": {
     "name": "mobile",
     "slug": "mobile",
     "version": "1.0.0",
@@ -27,7 +14,16 @@
     "ios": {
       "supportsTablet": true
     },
-
+    "android": {
+      "package": "com.example.myapp",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      }
+    },
     "web": {
       "favicon": "./assets/favicon.png"
     },
@@ -35,6 +31,12 @@
     "plugins": [
       "expo-router"
     ],
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "router": {
         "origin": false
