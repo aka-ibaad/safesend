@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { authService } from '../services/api.service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,6 +11,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
+  const [errorMessage, setErrorMessage] = useState('');
   const router = useRouter();
 
   useEffect(() => {
@@ -42,9 +43,14 @@ export default function LoginScreen() {
   };
 
   const handleLogin = async () => {
-    if (!email || !password) return Alert.alert('Error', 'Please fill in all fields');
-    
+    if (!email || !password) {
+      setErrorMessage('Please fill in all fields');
+      return;
+    }
+    setErrorMessage('');
     setLoading(true);
+    // Clear any stale session from a previous account before attempting login
+    await AsyncStorage.multiRemove(['token', 'user']);
     try {
       const { data } = await authService.login({ email, password });
       await AsyncStorage.setItem('token', data.token);
@@ -68,7 +74,7 @@ export default function LoginScreen() {
         router.replace('/client/dashboard');
       }
     } catch (err) {
-      Alert.alert('Login Failed', err.response?.data?.message || 'Something went wrong');
+      setErrorMessage(err.response?.data?.message || 'Wrong password. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -106,17 +112,23 @@ export default function LoginScreen() {
           />
         </View>
 
-        <View style={styles.inputContainer}>
-          <Lock size={20} color="#64748b" style={styles.icon} />
+        <View style={[styles.inputContainer, errorMessage ? styles.inputError : null]}>
+          <Lock size={20} color={errorMessage ? '#ef4444' : '#64748b'} style={styles.icon} />
           <TextInput
             style={styles.input}
             placeholder="Password"
             placeholderTextColor="#94a3b8"
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text) => { setPassword(text); setErrorMessage(''); }}
             secureTextEntry
           />
         </View>
+
+        {errorMessage ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>⚠ {errorMessage}</Text>
+          </View>
+        ) : null}
 
         <TouchableOpacity 
           style={styles.button} 
@@ -168,6 +180,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderWidth: 1,
     borderColor: '#334155',
+  },
+  inputError: {
+    borderColor: '#ef4444',
+    borderWidth: 1.5,
+  },
+  errorBox: {
+    backgroundColor: 'rgba(239,68,68,0.12)',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.4)',
+  },
+  errorText: {
+    color: '#f87171',
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
   },
   icon: {
     marginRight: 12,

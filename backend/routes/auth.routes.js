@@ -1,22 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/auth.controller');
-const rateLimit = require('express-rate-limit');
+// const rateLimit = require('express-rate-limit'); // Re-enable for production
 const auth = require('../middleware/auth.middleware');
 const { body } = require('express-validator');
 
-// Rate limiting for auth routes (max 10 requests per 15 minutes per IP)
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  message: { message: 'Too many requests from this IP, please try again after 15 minutes' }
-});
+// Rate limiting disabled for testing — re-enable before going live
+// const authLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000,
+//   max: 10,
+//   message: { message: 'Too many requests from this IP, please try again after 15 minutes' }
+// });
 
 // @route   POST api/auth/register
 // @desc    Register a new user
 router.post(
   '/register',
-  authLimiter,
   [
     body('name', 'Name is required').not().isEmpty(),
     body('email', 'Please include a valid email').isEmail(),
@@ -31,7 +30,6 @@ router.post(
 // @desc    Login user and return JWT
 router.post(
   '/login',
-  authLimiter,
   [
     body('email', 'Please include a valid email').isEmail(),
     body('password', 'Password is required').exists()
@@ -41,6 +39,7 @@ router.post(
 
 // @route   PUT api/auth/profile
 // @desc    Update user profile
-router.put('/profile', authLimiter, auth, authController.updateProfile);
+router.put('/profile', auth, authController.updateProfile);
 
 module.exports = router;
+

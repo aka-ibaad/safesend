@@ -21,8 +21,10 @@ export default function PreviewScreen() {
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
+  const [accepting, setAccepting] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [isZoomModalVisible, setIsZoomModalVisible] = useState(false);
+  const [userRole, setUserRole] = useState(null);
   const router = useRouter();
   
   useEffect(() => {
@@ -43,12 +45,18 @@ export default function PreviewScreen() {
 
     enablePrevention();
     fetchFileDetails();
+    loadUserRole();
     
     return () => {
       subscription?.remove();
       ScreenCapture.allowScreenCaptureAsync();
     };
   }, [id]);
+
+  const loadUserRole = async () => {
+    const raw = await AsyncStorage.getItem('user');
+    if (raw) setUserRole(JSON.parse(raw)?.role);
+  };
 
   const fetchFileDetails = async () => {
     try {
@@ -77,6 +85,24 @@ export default function PreviewScreen() {
       Alert.alert('Payment Failed', err.response?.data?.message || 'Something went wrong');
     } finally {
       setPaying(false);
+    }
+  };
+
+  const handleFreelancerAccept = async () => {
+    setAccepting(true);
+    try {
+      const { data: intent } = await api.post('/payment/create-intent', { fileId: id });
+      await api.post('/payment/confirm-mock', { paymentIntentId: intent.id });
+
+      Alert.alert(
+        '✅ Payment Accepted!',
+        'The file has been unlocked. The client can now download it.',
+        [{ text: 'Done', onPress: () => fetchFileDetails() }]
+      );
+    } catch (err) {
+      Alert.alert('Error', err.response?.data?.message || 'Something went wrong');
+    } finally {
+      setAccepting(false);
     }
   };
 
@@ -227,15 +253,44 @@ export default function PreviewScreen() {
               )}
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity style={styles.payBtn} onPress={handleMockPayment} disabled={paying}>
-              {paying
-                ? <ActivityIndicator color="#fff" />
-                : <>
-                    <CreditCard size={22} color="#fff" />
-                    <Text style={styles.btnText}>Pay $50.00 & Unlock (Mock)</Text>
-                  </>
-              }
-            </TouchableOpacity>
+            <View style={styles.demoPayContainer}>
+              <View style={styles.demoBanner}>
+                <CreditCard size={14} color="#f59e0b" />
+                <Text style={styles.demoBannerText}>🧪 DEMO MODE — No real payment needed</Text>
+              </View>
+
+              {userRole === 'freelancer' ? (
+                // Freelancer: accept/unlock the file on their side
+                <TouchableOpacity
+                  style={[styles.acceptBtn, accepting && { opacity: 0.7 }]}
+                  onPress={handleFreelancerAccept}
+                  disabled={accepting}
+                >
+                  {accepting
+                    ? <ActivityIndicator color="#fff" />
+                    : <>
+                        <CreditCard size={22} color="#fff" />
+                        <Text style={styles.btnText}>Accept Payment & Unlock File</Text>
+                      </>
+                  }
+                </TouchableOpacity>
+              ) : (
+                // Client: simulate paying
+                <TouchableOpacity
+                  style={[styles.payBtn, paying && { opacity: 0.7 }]}
+                  onPress={handleMockPayment}
+                  disabled={paying}
+                >
+                  {paying
+                    ? <ActivityIndicator color="#fff" />
+                    : <>
+                        <CreditCard size={22} color="#fff" />
+                        <Text style={styles.btnText}>Simulate Payment $50.00</Text>
+                      </>
+                  }
+                </TouchableOpacity>
+              )}
+            </View>
           )}
 
           <TouchableOpacity 
@@ -340,6 +395,19 @@ const styles = StyleSheet.create({
     height: 60, borderRadius: 16, backgroundColor: '#3b82f6',
     shadowColor: '#3b82f6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8,
   },
+  acceptBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12,
+    height: 60, borderRadius: 16, backgroundColor: '#10b981',
+    shadowColor: '#10b981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8,
+  },
+  demoPayContainer: { gap: 12 },
+  demoBanner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    backgroundColor: 'rgba(245,158,11,0.12)', borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.35)', borderRadius: 10,
+    paddingVertical: 8, paddingHorizontal: 14,
+  },
+  demoBannerText: { color: '#f59e0b', fontSize: 12, fontWeight: '600' },
   downloadBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12,
     height: 60, borderRadius: 16, backgroundColor: '#10b981',

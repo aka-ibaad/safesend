@@ -18,6 +18,8 @@ export default function RootLayout() {
       <Stack.Screen name="client/dashboard" options={{ headerShown: false }} />
       <Stack.Screen name="preview/[id]" options={{ title: 'Secure Preview', headerBackTitle: 'Back' }} />
       <Stack.Screen name="preview/annotate" options={{ title: 'Annotate', headerBackTitle: 'Back' }} />
+      <Stack.Screen name="settings" options={{ headerShown: false }} />
+      <Stack.Screen name="notifications" options={{ headerShown: false }} />
     </Stack>
   );
 }

@@ -1,9 +1,20 @@
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
-// Replace with your local IP address for physical device testing
-// Windows: ipconfig -> IPv4 Address
-const BASE_URL = 'http://192.168.0.102:5000/api';
+// Automatically use the same IP that Expo is running from.
+// This works on physical devices with Expo Go without manual IP changes.
+const getBaseUrl = () => {
+  const hostUri = Constants.expoConfig?.hostUri;
+  if (hostUri) {
+    const ip = hostUri.split(':')[0];
+    return `http://${ip}:5000/api`;
+  }
+  // Fallback for production or standalone builds
+  return 'http://localhost:5000/api';
+};
+
+const BASE_URL = getBaseUrl();
 
 const api = axios.create({
   baseURL: BASE_URL,
