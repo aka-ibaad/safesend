@@ -6,23 +6,33 @@ import {
 import { useRouter } from 'expo-router';
 import { fileService } from '../../services/api.service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Plus, FileText, ChevronRight, LogOut, TrendingUp, Settings, Bell } from 'lucide-react-native';
+import { Plus, FileText, ChevronRight, LogOut, Settings, Bell, Wallet } from 'lucide-react-native';
+import { paymentService } from '../../services/api.service';
 
 export default function FreelancerDashboard() {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState(null);
+  const [pendingCount, setPendingCount] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
     loadUserData();
     fetchFiles();
+    fetchPendingCount();
   }, []);
 
   const loadUserData = async () => {
     const userData = await AsyncStorage.getItem('user');
     if (userData) setUser(JSON.parse(userData));
+  };
+
+  const fetchPendingCount = async () => {
+    try {
+      const { data } = await paymentService.getPendingPayments();
+      setPendingCount(data.length);
+    } catch {}
   };
 
   const fetchFiles = async () => {
@@ -80,6 +90,14 @@ export default function FreelancerDashboard() {
         <View style={styles.headerBtns}>
           <TouchableOpacity onPress={() => router.push('/notifications')} style={[styles.iconBtn, { marginRight: 10 }]}>
             <Bell size={20} color="#94a3b8" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/freelancer/payments')} style={[styles.iconBtn, { marginRight: 10 }]}>
+            <Wallet size={20} color={pendingCount > 0 ? '#10b981' : '#94a3b8'} />
+            {pendingCount > 0 && (
+              <View style={styles.badge}>
+                <Text style={styles.badgeText}>{pendingCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/settings')} style={[styles.iconBtn, { marginRight: 10 }]}>
             <Settings size={20} color="#94a3b8" />
@@ -145,6 +163,12 @@ const styles = StyleSheet.create({
   userName: { color: '#fff', fontSize: 26, fontWeight: 'bold' },
   iconBtn: { padding: 10, backgroundColor: '#1e293b', borderRadius: 12 },
   headerBtns: { flexDirection: 'row', alignItems: 'center' },
+  badge: {
+    position: 'absolute', top: 4, right: 4,
+    backgroundColor: '#ef4444', borderRadius: 8, minWidth: 16, height: 16,
+    justifyContent: 'center', alignItems: 'center', paddingHorizontal: 3,
+  },
+  badgeText: { color: '#fff', fontSize: 9, fontWeight: 'bold' },
   statsRow: { flexDirection: 'row', gap: 12, paddingHorizontal: 20, marginBottom: 28 },
   statCard: {
     flex: 1, backgroundColor: '#1e293b', padding: 16, borderRadius: 16,

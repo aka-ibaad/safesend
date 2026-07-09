@@ -85,6 +85,7 @@ exports.uploadFile = async (req, res) => {
       originalFileType: originalUpload.type || 'upload',
       previewFileUrl: previewUpload.secure_url,
       previewFilePublicId: previewUpload.public_id,
+      price: parseFloat(req.body.price) || 0,
       proofOfEffort
     });
 
@@ -103,10 +104,9 @@ exports.uploadFile = async (req, res) => {
 
 exports.getFilePreview = async (req, res) => {
   try {
-    const file = await File.findById(req.params.id);
+    const file = await File.findById(req.params.id).populate('uploadedBy', 'name');
     if (!file) return res.status(404).json({ message: 'File not found' });
 
-    // Generate a fallback name for older files to help mobile app with extensions
     let originalName = file.originalName;
     if (!originalName && file.originalFileUrl) {
       const lastPart = file.originalFileUrl.split('/').pop();
@@ -119,7 +119,10 @@ exports.getFilePreview = async (req, res) => {
       previewUrl: file.previewFileUrl, 
       originalName,
       proofOfEffort: file.proofOfEffort,
-      isUnlocked: file.isUnlocked 
+      isUnlocked: file.isUnlocked,
+      price: file.price || 0,
+      paymentStatus: file.paymentStatus,
+      freelancerName: file.uploadedBy?.name || 'Freelancer'
     });
   } catch (err) {
     res.status(500).json({ message: err.message });

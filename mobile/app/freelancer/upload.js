@@ -11,6 +11,7 @@ import { Upload, FileText, CheckCircle } from 'lucide-react-native';
 export default function UploadFileScreen() {
   const [selectedFile, setSelectedFile] = useState(null);
   const [description, setDescription] = useState('');
+  const [price, setPrice] = useState('');
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded] = useState(false);
   const router = useRouter();
@@ -35,6 +36,9 @@ export default function UploadFileScreen() {
 
   const handleUpload = async () => {
     if (!selectedFile) return Alert.alert('No File', 'Please select a file first');
+    if (!price || isNaN(parseFloat(price)) || parseFloat(price) <= 0) {
+      return Alert.alert('Price Required', 'Please enter a valid price for your work');
+    }
 
     setUploading(true);
     try {
@@ -44,6 +48,7 @@ export default function UploadFileScreen() {
         name: selectedFile.name,
         type: selectedFile.mimeType || 'application/octet-stream',
       });
+      formData.append('price', price);
       if (description) formData.append('description', description);
 
       await fileService.upload(formData);
@@ -78,8 +83,22 @@ export default function UploadFileScreen() {
         )}
       </TouchableOpacity>
 
+      {/* Price Field */}
+      <Text style={styles.label}>Your Price (USD) *</Text>
+      <View style={styles.priceContainer}>
+        <Text style={styles.priceCurrency}>$</Text>
+        <TextInput
+          style={styles.priceInput}
+          placeholder="e.g. 120"
+          placeholderTextColor="#475569"
+          value={price}
+          onChangeText={setPrice}
+          keyboardType="decimal-pad"
+        />
+      </View>
+
       {/* Optional Description */}
-      <Text style={styles.label}>Description (optional)</Text>
+      <Text style={styles.label}>Work Description (optional)</Text>
       <TextInput
         style={styles.input}
         placeholder="Describe your work for AI analysis..."
@@ -137,6 +156,13 @@ const styles = StyleSheet.create({
   fileName: { color: '#fff', fontWeight: 'bold', marginTop: 8, textAlign: 'center', paddingHorizontal: 16 },
   fileSize: { color: '#94a3b8', fontSize: 12, marginTop: 4 },
   label: { color: '#94a3b8', marginBottom: 8, fontSize: 14 },
+  priceContainer: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#1e293b', borderRadius: 12, paddingHorizontal: 16,
+    borderWidth: 1, borderColor: '#3b82f6', marginBottom: 20, height: 56,
+  },
+  priceCurrency: { color: '#3b82f6', fontSize: 20, fontWeight: 'bold', marginRight: 8 },
+  priceInput: { flex: 1, color: '#fff', fontSize: 20, fontWeight: 'bold' },
   input: {
     backgroundColor: '#1e293b', color: '#fff', borderRadius: 12, padding: 16,
     borderWidth: 1, borderColor: '#334155', marginBottom: 24, minHeight: 80,

@@ -31,6 +31,24 @@ const fileSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  price: {
+    type: Number,
+    default: 0
+  },
+  paymentStatus: {
+    type: String,
+    enum: [null, 'pending_acceptance', 'accepted', 'rejected'],
+    default: null
+  },
+  paidBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  paidAt: {
+    type: Date,
+    default: null
+  },
   paymentIntentId: {
     type: String
   },

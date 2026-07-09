@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Image, ScrollView, TouchableOpacity,
-  Alert, ActivityIndicator, Dimensions, Modal
+  Alert, ActivityIndicator, Dimensions, Modal, TextInput
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { fileService } from '../../services/api.service';
+import { fileService, paymentService } from '../../services/api.service';
 import api from '../../services/api.service';
-import { Shield, Download, CreditCard, Info, AlertTriangle, PenLine, X, Maximize2 } from 'lucide-react-native';
+import { Shield, Download, CreditCard, Info, PenLine, X, Maximize2, Check, Clock } from 'lucide-react-native';
 import * as ScreenCapture from 'expo-screen-capture';
 import ImageViewer from 'react-native-image-zoom-viewer';
 import * as FileSystem from 'expo-file-system';
@@ -20,10 +20,10 @@ export default function PreviewScreen() {
   const { id } = useLocalSearchParams();
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [paying, setPaying] = useState(false);
-  const [accepting, setAccepting] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const [isZoomModalVisible, setIsZoomModalVisible] = useState(false);
+  const [showPayModal, setShowPayModal] = useState(false);
+  const [payStep, setPayStep] = useState(1); // 1=summary, 2=card, 3=processing, 4=success
   const [userRole, setUserRole] = useState(null);
   const router = useRouter();
   
@@ -70,40 +70,25 @@ export default function PreviewScreen() {
     }
   };
 
-  const handleMockPayment = async () => {
-    setPaying(true);
+  const handlePayNow = async () => {
+    setPayStep(3); // processing
     try {
-      const { data: intent } = await api.post('/payment/create-intent', { fileId: id });
-      await api.post('/payment/confirm-mock', { paymentIntentId: intent.id });
-
-      Alert.alert(
-        '✅ Payment Successful!',
-        'Your file has been unlocked. You can now download the original file.',
-        [{ text: 'Great!', onPress: () => fetchFileDetails() }]
-      );
+      const { data: intent } = await paymentService.createIntent(id);
+      // Simulate 2s processing delay
+      await new Promise(r => setTimeout(r, 2000));
+      setPayStep(4); // success
+      // Refresh file data after a moment
+      setTimeout(() => fetchFileDetails(), 1000);
     } catch (err) {
+      setShowPayModal(false);
+      setPayStep(1);
       Alert.alert('Payment Failed', err.response?.data?.message || 'Something went wrong');
-    } finally {
-      setPaying(false);
     }
   };
 
-  const handleFreelancerAccept = async () => {
-    setAccepting(true);
-    try {
-      const { data: intent } = await api.post('/payment/create-intent', { fileId: id });
-      await api.post('/payment/confirm-mock', { paymentIntentId: intent.id });
-
-      Alert.alert(
-        '✅ Payment Accepted!',
-        'The file has been unlocked. The client can now download it.',
-        [{ text: 'Done', onPress: () => fetchFileDetails() }]
-      );
-    } catch (err) {
-      Alert.alert('Error', err.response?.data?.message || 'Something went wrong');
-    } finally {
-      setAccepting(false);
-    }
+  const handleClosePayModal = () => {
+    setShowPayModal(false);
+    setPayStep(1);
   };
 
   const handleDownload = async () => {
@@ -207,11 +192,21 @@ export default function PreviewScreen() {
         </TouchableOpacity>
 
         <View style={styles.content}>
-          <View style={[styles.statusBanner, file?.isUnlocked && styles.statusBannerUnlocked]}>
-            <Text style={styles.statusText}>
-              {file?.isUnlocked ? '🔓 File Unlocked — Premium Options Available' : '🔒 File Locked — Payment Required'}
-            </Text>
-          </View>
+          {/* Status Banner */}
+          {file?.isUnlocked ? (
+            <View style={[styles.statusBanner, styles.statusBannerUnlocked]}>
+              <Text style={styles.statusText}>🔓 File Unlocked — Ready to Download</Text>
+            </View>
+          ) : file?.paymentStatus === 'pending_acceptance' ? (
+            <View style={styles.statusBannerPending}>
+              <Clock size={16} color="#f59e0b" />
+              <Text style={[styles.statusText, { color: '#f59e0b', marginLeft: 8 }]}>⏳ Payment Sent — Awaiting Freelancer Approval</Text>
+            </View>
+          ) : (
+            <View style={styles.statusBanner}>
+              <Text style={styles.statusText}>🔒 File Locked — Payment Required</Text>
+            </View>
+          )}
 
           {/* AI Proof of Effort Card */}
           {file?.proofOfEffort && (
@@ -243,55 +238,27 @@ export default function PreviewScreen() {
               onPress={handleDownload}
               disabled={downloading}
             >
-              {downloading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
+              {downloading ? <ActivityIndicator color="#fff" /> : (
                 <>
                   <Download size={22} color="#fff" />
                   <Text style={styles.btnText}>Download Original File</Text>
                 </>
               )}
             </TouchableOpacity>
-          ) : (
-            <View style={styles.demoPayContainer}>
-              <View style={styles.demoBanner}>
-                <CreditCard size={14} color="#f59e0b" />
-                <Text style={styles.demoBannerText}>🧪 DEMO MODE — No real payment needed</Text>
-              </View>
-
-              {userRole === 'freelancer' ? (
-                // Freelancer: accept/unlock the file on their side
-                <TouchableOpacity
-                  style={[styles.acceptBtn, accepting && { opacity: 0.7 }]}
-                  onPress={handleFreelancerAccept}
-                  disabled={accepting}
-                >
-                  {accepting
-                    ? <ActivityIndicator color="#fff" />
-                    : <>
-                        <CreditCard size={22} color="#fff" />
-                        <Text style={styles.btnText}>Accept Payment & Unlock File</Text>
-                      </>
-                  }
-                </TouchableOpacity>
-              ) : (
-                // Client: simulate paying
-                <TouchableOpacity
-                  style={[styles.payBtn, paying && { opacity: 0.7 }]}
-                  onPress={handleMockPayment}
-                  disabled={paying}
-                >
-                  {paying
-                    ? <ActivityIndicator color="#fff" />
-                    : <>
-                        <CreditCard size={22} color="#fff" />
-                        <Text style={styles.btnText}>Simulate Payment $50.00</Text>
-                      </>
-                  }
-                </TouchableOpacity>
-              )}
+          ) : file?.paymentStatus === 'pending_acceptance' ? (
+            // Payment sent, waiting for freelancer
+            <View style={styles.pendingCard}>
+              <Clock size={28} color="#f59e0b" />
+              <Text style={styles.pendingTitle}>Payment Pending</Text>
+              <Text style={styles.pendingDesc}>Your payment of ${file.price?.toFixed(2)} has been sent to {file.freelancerName}. You'll be able to download as soon as they accept.</Text>
             </View>
-          )}
+          ) : userRole === 'client' || !userRole ? (
+            // Client: open payment modal
+            <TouchableOpacity style={styles.payBtn} onPress={() => setShowPayModal(true)}>
+              <CreditCard size={22} color="#fff" />
+              <Text style={styles.btnText}>Pay ${file?.price?.toFixed(2)} to {file?.freelancerName}</Text>
+            </TouchableOpacity>
+          ) : null}
 
           <TouchableOpacity 
             style={styles.annotateBtn}
@@ -328,6 +295,106 @@ export default function PreviewScreen() {
           />
         </View>
       </Modal>
+
+      {/* ===== Payment Modal ===== */}
+      <Modal visible={showPayModal} transparent animationType="slide" onRequestClose={handleClosePayModal}>
+        <View style={styles.payModalOverlay}>
+          <View style={styles.payModalSheet}>
+
+            {/* Step 1: Order Summary */}
+            {payStep === 1 && (
+              <>
+                <View style={styles.payModalHeader}>
+                  <Text style={styles.payModalTitle}>Order Summary</Text>
+                  <TouchableOpacity onPress={handleClosePayModal}><X size={22} color="#64748b" /></TouchableOpacity>
+                </View>
+                <View style={styles.demoBadge}>
+                  <Text style={styles.demoBadgeText}>🧪 DEMO — No real charge</Text>
+                </View>
+                <View style={styles.orderRow}>
+                  <Text style={styles.orderLabel}>Work by</Text>
+                  <Text style={styles.orderValue}>{file?.freelancerName}</Text>
+                </View>
+                <View style={styles.orderRow}>
+                  <Text style={styles.orderLabel}>File</Text>
+                  <Text style={styles.orderValue} numberOfLines={1}>{file?.originalName || 'Secure File'}</Text>
+                </View>
+                <View style={[styles.orderRow, styles.orderTotal]}>
+                  <Text style={styles.orderTotalLabel}>Total</Text>
+                  <Text style={styles.orderTotalValue}>${file?.price?.toFixed(2)}</Text>
+                </View>
+                <TouchableOpacity style={styles.payModalBtn} onPress={() => setPayStep(2)}>
+                  <Text style={styles.payModalBtnText}>Continue to Payment</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {/* Step 2: Mock Card Form */}
+            {payStep === 2 && (
+              <>
+                <View style={styles.payModalHeader}>
+                  <TouchableOpacity onPress={() => setPayStep(1)}><X size={22} color="#64748b" /></TouchableOpacity>
+                  <Text style={styles.payModalTitle}>Payment Details</Text>
+                  <View style={{ width: 22 }} />
+                </View>
+                <View style={styles.demoBadge}>
+                  <Text style={styles.demoBadgeText}>🧪 DEMO — Test card pre-filled</Text>
+                </View>
+                <Text style={styles.cardLabel}>Card Number</Text>
+                <View style={styles.cardField}>
+                  <CreditCard size={18} color="#3b82f6" />
+                  <Text style={styles.cardValue}>4242  4242  4242  4242</Text>
+                </View>
+                <View style={styles.cardRow}>
+                  <View style={styles.cardHalf}>
+                    <Text style={styles.cardLabel}>Expiry</Text>
+                    <View style={styles.cardField}>
+                      <Text style={styles.cardValue}>12 / 28</Text>
+                    </View>
+                  </View>
+                  <View style={styles.cardHalf}>
+                    <Text style={styles.cardLabel}>CVV</Text>
+                    <View style={styles.cardField}>
+                      <Text style={styles.cardValue}>123</Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={styles.orderTotal}>
+                  <Text style={styles.orderTotalLabel}>Charging</Text>
+                  <Text style={styles.orderTotalValue}>${file?.price?.toFixed(2)}</Text>
+                </View>
+                <TouchableOpacity style={styles.payModalBtn} onPress={handlePayNow}>
+                  <Text style={styles.payModalBtnText}>Pay Now</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            {/* Step 3: Processing */}
+            {payStep === 3 && (
+              <View style={styles.payStepCenter}>
+                <ActivityIndicator size="large" color="#3b82f6" />
+                <Text style={styles.processingText}>Authorizing payment...</Text>
+                <Text style={styles.processingSubtext}>Sending ${file?.price?.toFixed(2)} to {file?.freelancerName}</Text>
+              </View>
+            )}
+
+            {/* Step 4: Success */}
+            {payStep === 4 && (
+              <View style={styles.payStepCenter}>
+                <View style={styles.successCircle}>
+                  <Check size={36} color="#fff" />
+                </View>
+                <Text style={styles.successTitle}>Payment Sent!</Text>
+                <Text style={styles.successDesc}>Your payment of ${file?.price?.toFixed(2)} has been sent to {file?.freelancerName}. You'll be notified once they accept.</Text>
+                <TouchableOpacity style={styles.payModalBtn} onPress={handleClosePayModal}>
+                  <Text style={styles.payModalBtnText}>Done</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -361,7 +428,18 @@ const styles = StyleSheet.create({
   statusBannerUnlocked: {
     backgroundColor: 'rgba(16,185,129,0.15)', borderColor: 'rgba(16,185,129,0.3)',
   },
+  statusBannerPending: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: 'rgba(245,158,11,0.12)', borderWidth: 1, borderColor: 'rgba(245,158,11,0.35)',
+    borderRadius: 12, padding: 12,
+  },
   statusText: { color: '#e2e8f0', fontSize: 14, textAlign: 'center' },
+  pendingCard: {
+    backgroundColor: '#1e293b', borderRadius: 20, padding: 24,
+    alignItems: 'center', borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)', gap: 12,
+  },
+  pendingTitle: { color: '#f59e0b', fontSize: 18, fontWeight: 'bold' },
+  pendingDesc: { color: '#94a3b8', fontSize: 14, textAlign: 'center', lineHeight: 22 },
   aiCard: { backgroundColor: '#1e293b', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: '#334155' },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
   cardTitle: { color: '#fff', fontWeight: 'bold', flex: 1 },
@@ -418,4 +496,59 @@ const styles = StyleSheet.create({
     position: 'absolute', top: 50, right: 20, zIndex: 99,
     padding: 10, backgroundColor: 'rgba(0,0,0,0.5)', borderRadius: 30,
   },
+  // Payment Modal
+  payModalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.7)',
+    justifyContent: 'flex-end',
+  },
+  payModalSheet: {
+    backgroundColor: '#1e293b', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    padding: 28, paddingBottom: 40, minHeight: 360,
+  },
+  payModalHeader: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20,
+  },
+  payModalTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  demoBadge: {
+    alignSelf: 'center', backgroundColor: 'rgba(245,158,11,0.15)',
+    borderWidth: 1, borderColor: 'rgba(245,158,11,0.4)',
+    borderRadius: 20, paddingHorizontal: 16, paddingVertical: 6, marginBottom: 24,
+  },
+  demoBadgeText: { color: '#f59e0b', fontSize: 12, fontWeight: '700' },
+  orderRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#334155',
+  },
+  orderLabel: { color: '#64748b', fontSize: 14 },
+  orderValue: { color: '#fff', fontSize: 14, fontWeight: '600', maxWidth: '55%', textAlign: 'right' },
+  orderTotal: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingVertical: 18, marginTop: 4, marginBottom: 20,
+  },
+  orderTotalLabel: { color: '#94a3b8', fontSize: 16 },
+  orderTotalValue: { color: '#3b82f6', fontSize: 26, fontWeight: 'bold' },
+  cardLabel: { color: '#64748b', fontSize: 12, marginBottom: 8, marginTop: 12 },
+  cardField: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#0f172a', borderRadius: 12, padding: 16,
+    borderWidth: 1, borderColor: '#334155',
+  },
+  cardValue: { color: '#fff', fontSize: 16, fontWeight: '600', letterSpacing: 1 },
+  cardRow: { flexDirection: 'row', gap: 12 },
+  cardHalf: { flex: 1 },
+  payModalBtn: {
+    backgroundColor: '#3b82f6', height: 56, borderRadius: 16,
+    justifyContent: 'center', alignItems: 'center', marginTop: 8,
+  },
+  payModalBtnText: { color: '#fff', fontSize: 16, fontWeight: 'bold' },
+  payStepCenter: { alignItems: 'center', paddingVertical: 24, gap: 16 },
+  processingText: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
+  processingSubtext: { color: '#94a3b8', fontSize: 14 },
+  successCircle: {
+    width: 80, height: 80, borderRadius: 40, backgroundColor: '#10b981',
+    justifyContent: 'center', alignItems: 'center',
+    shadowColor: '#10b981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 12,
+  },
+  successTitle: { color: '#fff', fontSize: 22, fontWeight: 'bold' },
+  successDesc: { color: '#94a3b8', fontSize: 14, textAlign: 'center', lineHeight: 22, paddingHorizontal: 16 },
 });

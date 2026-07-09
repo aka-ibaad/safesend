@@ -46,4 +46,11 @@ export const fileService = {
   logScreenshot: (id) => api.post(`/files/${id}/screenshot-alert`),
 };
 
+export const paymentService = {
+  createIntent: (fileId) => api.post('/payment/create-intent', { fileId }),
+  confirmPayment: (paymentIntentId) => api.post('/payment/confirm-mock', { paymentIntentId }),
+  getPendingPayments: () => api.get('/payment/pending'),
+  rejectPayment: (fileId) => api.post('/payment/reject', { fileId }),
+};
+
 export default api;
