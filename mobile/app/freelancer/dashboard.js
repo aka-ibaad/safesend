@@ -6,7 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { fileService } from '../../services/api.service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Plus, FileText, ChevronRight, LogOut, Settings, Bell, Wallet } from 'lucide-react-native';
+import { Plus, FileText, ChevronRight, LogOut, Settings, Bell, Wallet, Clock } from 'lucide-react-native';
 import { paymentService } from '../../services/api.service';
 
 export default function FreelancerDashboard() {
@@ -57,27 +57,38 @@ export default function FreelancerDashboard() {
     fetchFiles();
   };
 
+  const unsoldCount = files.filter(f => !f.isUnlocked && f.paymentStatus !== 'pending_acceptance').length;
+  const pendingFileCount = files.filter(f => f.paymentStatus === 'pending_acceptance').length;
   const unlockedCount = files.filter(f => f.isUnlocked).length;
 
-  const renderFileItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.fileCard}
-      onPress={() => router.push(`/preview/${item._id}`)}
-    >
-      <View style={styles.fileIcon}>
-        <FileText size={22} color="#3b82f6" />
-      </View>
-      <View style={styles.fileInfo}>
-        <Text style={styles.fileName} numberOfLines={1}>
-          {item.originalFileUrl ? item.originalFileUrl.split('/').pop().split('?')[0] : 'Untitled File'}
-        </Text>
-        <Text style={[styles.fileStatus, item.isUnlocked && styles.fileStatusUnlocked]}>
-          {item.isUnlocked ? '✅ Unlocked' : '🔒 Awaiting Payment'}
-        </Text>
-      </View>
-      <ChevronRight size={18} color="#334155" />
-    </TouchableOpacity>
-  );
+  const getFileStatus = (item) => {
+    if (item.isUnlocked) return { label: '✅ Payment Received', color: '#10b981' };
+    if (item.paymentStatus === 'pending_acceptance') return { label: '⏳ Pending Your Approval', color: '#f59e0b' };
+    return { label: `🔒 Awaiting Payment ($${item.price?.toFixed(2) || '0.00'})`, color: '#94a3b8' };
+  };
+
+  const renderFileItem = ({ item }) => {
+    const status = getFileStatus(item);
+    return (
+      <TouchableOpacity
+        style={styles.fileCard}
+        onPress={() => router.push(`/preview/${item._id}`)}
+      >
+        <View style={styles.fileIcon}>
+          <FileText size={22} color="#3b82f6" />
+        </View>
+        <View style={styles.fileInfo}>
+          <Text style={styles.fileName} numberOfLines={1}>
+            {item.originalName || 'Untitled File'}
+          </Text>
+          <Text style={[styles.fileStatus, { color: status.color }]}>
+            {status.label}
+          </Text>
+        </View>
+        <ChevronRight size={18} color="#334155" />
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -111,16 +122,16 @@ export default function FreelancerDashboard() {
       {/* Stats */}
       <View style={styles.statsRow}>
         <View style={styles.statCard}>
-          <Text style={styles.statNum}>{files.length}</Text>
-          <Text style={styles.statLabel}>Total Files</Text>
+          <Text style={styles.statNum}>{unsoldCount}</Text>
+          <Text style={styles.statLabel}>Unsold</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Text style={[styles.statNum, { color: '#f59e0b' }]}>{pendingFileCount}</Text>
+          <Text style={styles.statLabel}>Pending</Text>
         </View>
         <View style={styles.statCard}>
           <Text style={[styles.statNum, { color: '#10b981' }]}>{unlockedCount}</Text>
-          <Text style={styles.statLabel}>Unlocked</Text>
-        </View>
-        <View style={styles.statCard}>
-          <Text style={[styles.statNum, { color: '#f59e0b' }]}>{files.length - unlockedCount}</Text>
-          <Text style={styles.statLabel}>Pending</Text>
+          <Text style={styles.statLabel}>Sold</Text>
         </View>
       </View>
 

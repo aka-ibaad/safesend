@@ -56,12 +56,44 @@ exports.confirmMockPayment = async (req, res) => {
   }
 };
 
+// Client: get all files this client has paid for (any status)
+exports.getMyPayments = async (req, res) => {
+  try {
+    const files = await File.find({
+      paidBy: req.user.userId,
+      paymentStatus: { $in: ['pending_acceptance', 'accepted', 'rejected'] }
+    })
+      .populate('uploadedBy', 'name')
+      .sort({ paidAt: -1 });
+
+    res.json(files);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Freelancer: get all files they uploaded that have a pending payment
 exports.getPendingPayments = async (req, res) => {
   try {
     const files = await File.find({
       uploadedBy: req.user.userId,
       paymentStatus: 'pending_acceptance'
+    })
+      .populate('paidBy', 'name email')
+      .sort({ paidAt: -1 });
+
+    res.json(files);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+// Freelancer: get history of accepted/rejected payments
+exports.getPaymentHistory = async (req, res) => {
+  try {
+    const files = await File.find({
+      uploadedBy: req.user.userId,
+      paymentStatus: { $in: ['accepted', 'rejected'] }
     })
       .populate('paidBy', 'name email')
       .sort({ paidAt: -1 });

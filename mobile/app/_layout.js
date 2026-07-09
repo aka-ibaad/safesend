@@ -21,6 +21,8 @@ export default function RootLayout() {
       <Stack.Screen name="settings" options={{ headerShown: false }} />
       <Stack.Screen name="notifications" options={{ headerShown: false }} />
       <Stack.Screen name="freelancer/payments" options={{ headerShown: false }} />
+      <Stack.Screen name="freelancer/history" options={{ headerShown: false }} />
+      <Stack.Screen name="client/payments" options={{ headerShown: false }} />
     </Stack>
   );
 }

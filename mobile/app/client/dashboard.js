@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Alert, ActivityIndicator, RefreshControl
@@ -6,7 +6,7 @@ import {
 import { useRouter } from 'expo-router';
 import { fileService } from '../../services/api.service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image as ImageIcon, Lock, Unlock, LogOut, ChevronRight, Settings } from 'lucide-react-native';
+import { Image as ImageIcon, Lock, Unlock, LogOut, ChevronRight, Settings, Wallet, Clock } from 'lucide-react-native';
 
 export default function ClientDashboard() {
   const [files, setFiles] = useState([]);
@@ -44,31 +44,44 @@ export default function ClientDashboard() {
 
   const onRefresh = () => { setRefreshing(true); fetchFiles(); };
 
-  const pendingCount = files.filter(f => !f.isUnlocked).length;
+  // Proper 3-state counts
+  const unpaidCount = files.filter(f => !f.isUnlocked && f.paymentStatus !== 'pending_acceptance').length;
+  const pendingCount = files.filter(f => f.paymentStatus === 'pending_acceptance').length;
   const readyCount = files.filter(f => f.isUnlocked).length;
 
-  const renderFileItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.fileCard}
-      onPress={() => router.push(`/preview/${item._id}`)}
-    >
-      <View style={[styles.fileIcon, item.isUnlocked && styles.fileIconUnlocked]}>
-        {item.isUnlocked
-          ? <Unlock size={22} color="#10b981" />
-          : <Lock size={22} color="#f59e0b" />
-        }
-      </View>
-      <View style={styles.fileInfo}>
-        <Text style={styles.fileName} numberOfLines={1}>
-          File from {item.uploadedBy?.name || 'Freelancer'}
-        </Text>
-        <Text style={[styles.fileStatus, item.isUnlocked && styles.statusReady]}>
-          {item.isUnlocked ? 'Ready to Download' : 'Payment Required • $50.00'}
-        </Text>
-      </View>
-      <ChevronRight size={18} color="#334155" />
-    </TouchableOpacity>
-  );
+  const getFileStatus = (item) => {
+    if (item.isUnlocked) return { label: 'Ready to Download', color: '#10b981' };
+    if (item.paymentStatus === 'pending_acceptance') return { label: 'â³ Awaiting Freelancer Approval', color: '#f59e0b' };
+    return { label: `Pay $${item.price?.toFixed(2) ?? 'â€”'} to unlock`, color: '#f59e0b' };
+  };
+
+  const getFileIcon = (item) => {
+    if (item.isUnlocked) return <Unlock size={22} color="#10b981" />;
+    if (item.paymentStatus === 'pending_acceptance') return <Clock size={22} color="#f59e0b" />;
+    return <Lock size={22} color="#f59e0b" />;
+  };
+
+  const renderFileItem = ({ item }) => {
+    const status = getFileStatus(item);
+    return (
+      <TouchableOpacity
+        style={styles.fileCard}
+        onPress={() => router.push(`/preview/${item._id}`)}
+      >
+        <View style={[styles.fileIcon, item.isUnlocked && styles.fileIconUnlocked]}>
+          {getFileIcon(item)}
+        </View>
+        <View style={styles.fileInfo}>
+          <Text style={styles.fileName} numberOfLines={1}>
+            {item.originalName || `File from ${item.uploadedBy?.name || 'Freelancer'}`}
+          </Text>
+          <Text style={styles.fileBy}>by {item.uploadedBy?.name || 'Freelancer'}</Text>
+          <Text style={[styles.fileStatus, { color: status.color }]}>{status.label}</Text>
+        </View>
+        <ChevronRight size={18} color="#334155" />
+      </TouchableOpacity>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -78,6 +91,9 @@ export default function ClientDashboard() {
           <Text style={styles.userName}>{user?.name || 'Client'}</Text>
         </View>
         <View style={styles.headerBtns}>
+          <TouchableOpacity onPress={() => router.push('/client/payments')} style={[styles.iconBtn, { marginRight: 10 }]}>
+            <Wallet size={20} color="#94a3b8" />
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/settings')} style={[styles.iconBtn, { marginRight: 10 }]}>
             <Settings size={20} color="#94a3b8" />
           </TouchableOpacity>
@@ -90,17 +106,22 @@ export default function ClientDashboard() {
       {/* Summary Banner */}
       <View style={styles.banner}>
         <View style={styles.bannerStat}>
-          <Text style={styles.bannerNum}>{pendingCount}</Text>
-          <Text style={styles.bannerLabel}>Pending Payment</Text>
+          <Text style={styles.bannerNum}>{unpaidCount}</Text>
+          <Text style={styles.bannerLabel}>Unpaid</Text>
         </View>
         <View style={styles.bannerDivider} />
         <View style={styles.bannerStat}>
-          <Text style={[styles.bannerNum, { color: '#10b981' }]}>{readyCount}</Text>
-          <Text style={styles.bannerLabel}>Ready to Download</Text>
+          <Text style={[styles.bannerNum, { color: '#fcd34d' }]}>{pendingCount}</Text>
+          <Text style={styles.bannerLabel}>Awaiting Accept</Text>
+        </View>
+        <View style={styles.bannerDivider} />
+        <View style={styles.bannerStat}>
+          <Text style={[styles.bannerNum, { color: '#6ee7b7' }]}>{readyCount}</Text>
+          <Text style={styles.bannerLabel}>Ready</Text>
         </View>
       </View>
 
-      <Text style={styles.sectionTitle}>Files Shared With You</Text>
+      <Text style={styles.sectionTitle}>Files Available to You</Text>
 
       {loading ? (
         <ActivityIndicator size="large" color="#10b981" style={{ marginTop: 40 }} />
@@ -139,8 +160,8 @@ const styles = StyleSheet.create({
     padding: 20, flexDirection: 'row', alignItems: 'center', marginBottom: 28,
   },
   bannerStat: { flex: 1, alignItems: 'center' },
-  bannerNum: { color: '#fff', fontSize: 32, fontWeight: 'bold' },
-  bannerLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 4 },
+  bannerNum: { color: '#fff', fontSize: 28, fontWeight: 'bold' },
+  bannerLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 4, textAlign: 'center' },
   bannerDivider: { width: 1, height: 48, backgroundColor: 'rgba(255,255,255,0.2)' },
   sectionTitle: { color: '#fff', fontSize: 18, fontWeight: 'bold', paddingHorizontal: 20, marginBottom: 12 },
   listContent: { paddingHorizontal: 20, paddingBottom: 30 },
@@ -155,9 +176,10 @@ const styles = StyleSheet.create({
   fileIconUnlocked: { backgroundColor: 'rgba(16,185,129,0.1)' },
   fileInfo: { flex: 1 },
   fileName: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  fileStatus: { color: '#f59e0b', fontSize: 12, marginTop: 3 },
-  statusReady: { color: '#10b981' },
+  fileBy: { color: '#475569', fontSize: 12, marginTop: 2 },
+  fileStatus: { fontSize: 12, marginTop: 3 },
   emptyState: { alignItems: 'center', marginTop: 80 },
   emptyText: { color: '#475569', fontSize: 18, fontWeight: 'bold', marginTop: 16 },
   emptySubtext: { color: '#334155', fontSize: 14, marginTop: 6 },
 });
+

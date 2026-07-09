@@ -1,11 +1,11 @@
-﻿import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   Alert, ActivityIndicator, RefreshControl
 } from "react-native";
 import { useRouter } from "expo-router";
 import { paymentService } from "../../services/api.service";
-import { ArrowLeft, Clock, Check, X, CreditCard, User } from "lucide-react-native";
+import { ArrowLeft, Clock, Check, X, CreditCard, User, History } from "lucide-react-native";
 
 export default function FreelancerPaymentsScreen() {
   const [payments, setPayments] = useState([]);
@@ -128,7 +128,9 @@ export default function FreelancerPaymentsScreen() {
           <ArrowLeft color="#fff" size={24} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Incoming Payments</Text>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity onPress={() => router.push('/freelancer/history')} style={styles.backBtn}>
+          <History color="#94a3b8" size={24} />
+        </TouchableOpacity>
       </View>
       {loading ? (
         <ActivityIndicator size="large" color="#3b82f6" style={{ marginTop: 60 }} />

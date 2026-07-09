@@ -49,7 +49,9 @@ export const fileService = {
 export const paymentService = {
   createIntent: (fileId) => api.post('/payment/create-intent', { fileId }),
   confirmPayment: (paymentIntentId) => api.post('/payment/confirm-mock', { paymentIntentId }),
+  getMyPayments: () => api.get('/payment/my-payments'),
   getPendingPayments: () => api.get('/payment/pending'),
+  getPaymentHistory: () => api.get('/payment/history'),
   rejectPayment: (fileId) => api.post('/payment/reject', { fileId }),
 };
 
