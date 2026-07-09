@@ -29,22 +29,19 @@
     },
     "scheme": "mobile",
     "plugins": [
-      "expo-router"
+      "expo-router",
+      [
+        "@stripe/stripe-react-native",
+        {
+          "merchantIdentifier": "merchant.com.example.myapp",
+          "enableGooglePay": false
+        }
+      ]
     ],
-    "updates": {
-      "fallbackToCacheTimeout": 0
-    },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
     "extra": {
       "router": {
         "origin": false
-      },
-      "eas": {
-        "projectId": "ded3990c-18d7-4c2e-95dd-7d9783c72908"
       }
-    },
-    "owner": "aka_ibaad"
+    }
   }
 }
